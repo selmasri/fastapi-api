@@ -147,10 +147,37 @@ def get_items(db: Session = Depends(get_db), current_user: dict = Depends(get_cu
 # ✅ Secure the POST /create-item Route
 @app.post("/create-item/")
 def create_item(item: Item, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     db_item = ItemDB(name=item.name, price=item.price, is_available=item.is_available)
     db.add(db_item)
     db.commit()
-    return {"message": f"Item '{db_item.name}' added successfully!"}
+    return {"message": f"Item '{db_item.name}' added successfully!", "user": current_user["username"]}
+
+# ✅ Secure the PUT /update-item/{item_id} Route
+@app.put("/update-item/{item_id}")
+def update_item(item_id: int, updated_item: Item, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    db_item = db.query(ItemDB).filter(ItemDB.id == item_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    db_item.name = updated_item.name
+    db_item.price = updated_item.price
+    db_item.is_available = updated_item.is_available
+    db.commit()
+    return {"message": f"Item '{db_item.name}' updated successfully!", "user": current_user["username"]}
+
+# ✅ Secure the DELETE /delete-item/{item_id} Route
+@app.delete("/delete-item/{item_id}")
+def delete_item(item_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    db_item = db.query(ItemDB).filter(ItemDB.id == item_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    db.delete(db_item)
+    db.commit()
+    return {"message": f"Item '{db_item.name}' deleted successfully!", "user": current_user["username"]}
 
 # ✅ Run FastAPI with Uvicorn (for Render)
 if __name__ == "__main__":
